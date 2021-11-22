@@ -1,0 +1,23 @@
+model_params:
+  num_layers: 4
+  d_model: 128
+  dff: 512
+  num_heads: 8
+  dropout_rate: 0.1
+  max_posit_encode_input: 1000
+  max_posit_encode_target: 1000
+
+dataset_params:
+  batch_size: 16
+  translate_tokenizers_model: ted_hrlr_translate_pt_en_converter
+  tf_dataset_name: 'ted_hrlr_translate/pt_to_en'
+
+train_params:
+  epochs: 20
+  steps_per_epoch: 100
+  validation_steps: 100
+
+metric_params:
+  bleu:
+    max_order: 2
+  gleu:
