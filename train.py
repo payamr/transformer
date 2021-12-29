@@ -43,14 +43,8 @@ def training_datasets(config: Dict, cache_dir: str) -> Dict:
     }
 
 
-def build_and_train_model(config: Dict, data: Dict, arguments: argparse.Namespace) -> tf.keras.Model:
+def build_model(config: Dict, data: Dict) -> tf.keras.Model:
     model_params = config['model_params']
-
-    learning_rate = CustomSchedule(model_params['d_model'])
-
-    optimizer = tf.keras.optimizers.Adam(
-        learning_rate, beta_1=0.9, beta_2=0.98, epsilon=1e-9
-    )
 
     transformer = Transformer(
         num_layers=model_params['num_layers'],
@@ -63,6 +57,10 @@ def build_and_train_model(config: Dict, data: Dict, arguments: argparse.Namespac
         max_posit_encode_target=model_params['max_posit_encode_target'],
         dropout_rate=model_params['dropout_rate']
     )
+    return transformer
+
+
+def compile_model(config: Dict, data: Dict, model: tf.keras.Model) -> None:
 
     eager = False
     metric_params = config['metric_params']
@@ -77,25 +75,34 @@ def build_and_train_model(config: Dict, data: Dict, arguments: argparse.Namespac
             eager = True
             metrics.append(gleu_score(target_tokenizer=data['target_tokenizer']))
 
-    transformer.compile(
+    learning_rate = CustomSchedule(config['model_params']['d_model'])
+
+    optimizer = tf.keras.optimizers.Adam(
+        learning_rate, beta_1=0.9, beta_2=0.98, epsilon=1e-9
+    )
+
+    model.compile(
         optimizer=optimizer,
         loss=masked_cross_entropy,
         metrics=metrics,
         run_eagerly=eager,
     )
 
-    callbacks = []
-    checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
-        filepath=os.path.join(arguments.checkpoint_dir, 'weights.{epoch:02d}-{val_loss:.2f}.hdf5'),
-        save_weights_only=True,
-        verbose=1
-    )
-    callbacks.append(checkpoint_callback)
 
-    callbacks.append(tf.keras.callbacks.TensorBoard(log_dir=arguments.checkpoint_dir))
-
+def train_model(config: Dict, data: Dict, arguments: argparse.Namespace, model: tf.keras.Model):
     train_params = config['train_params']
-    transformer.fit(
+
+    callbacks = [
+        tf.keras.callbacks.ModelCheckpoint(
+            filepath=os.path.join(arguments.checkpoint_dir, 'weights.{epoch:02d}.hdf5'),
+            save_weights_only=True,
+            verbose=1,
+            save_freq='epoch' if train_params.get('save_freq') is None else int(train_params['save_freq'])
+        ),
+        tf.keras.callbacks.TensorBoard(log_dir=arguments.checkpoint_dir)
+    ]
+
+    model.fit(
         data['train_ds'],
         validation_data=data['val_ds'],
         epochs=train_params['epochs'],
@@ -105,11 +112,17 @@ def build_and_train_model(config: Dict, data: Dict, arguments: argparse.Namespac
     )
 
 
+def build_and_train_model(config: Dict, data: Dict, arguments: argparse.Namespace):
+    model = build_model(config, data)
+    compile_model(config, data, model)
+    train_model(config, data, arguments, model)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", '-c', type=str, default='config')
+    parser.add_argument("--config", '-c', type=str, default='config_large')
     parser.add_argument("--cache-dir", '-d', type=str, default='/home/payam/Documents/translate_data')
-    parser.add_argument("--checkpoint-dir", '-p', type=str, default='/home/payam/Documents/checkpoints')
+    parser.add_argument("--checkpoint-dir", '-p', type=str, default='/home/payam/Documents/checkpoints/transformer_pt_en_large')
     parser.add_argument("--distribute", '-s', type=str, default='mirrored', help="'mirrored', '', 'multiworker'")
 
     args = parser.parse_args()

@@ -47,11 +47,11 @@ def gleu_score(target_tokenizer: tensorflow_text.Tokenizer):
     def _gleu_score(y_true: tf.Tensor, pred_logits: tf.Tensor):
 
         y_true, y_pred = tensors_to_text(y_true, pred_logits, target_tokenizer)
-        bleus = []
+        gleus = []
 
         for yt, yp in zip(y_true, y_pred):
-            bleus.append(sentence_gleu([yt], yp[:len(yt)]))
-        return np.mean(bleus)
+            gleus.append(sentence_gleu([yt], yp[:len(yt)]))
+        return np.mean(gleus)
 
     _gleu_score.__name__ = f'gleu'
 

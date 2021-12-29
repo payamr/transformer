@@ -68,6 +68,7 @@ def tokenizers_from_tf_model(model_name: str, cache_dir: str):
 
 
 def pt_to_en_tokenizers(cache_dir):
+    """stats: 'test': 1,803, 'train': 51,785, 'validation': 1,193 """
     model_name = "ted_hrlr_translate_pt_en_converter"
     tokenizers = tokenizers_from_tf_model(model_name, cache_dir)
     return tokenizers.pt, tokenizers.en
